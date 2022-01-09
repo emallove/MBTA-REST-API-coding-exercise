@@ -42,7 +42,7 @@ from pprint import pprint
 # 1. The name of the subway route with the most stops as well as a count of its stops.
 # 2. The name of the subway route with the fewest stops as well as a count of its stops.
 # 3. A list of the stops that connect two or more subway routes along with the relevant route
-# names for each of those stops.
+#    names for each of those stops.
 #
 #####################################################################################################
 # Question 3
@@ -66,40 +66,40 @@ from pprint import pprint
 # How you handle input, represent train routes, and present output is your choice.
 
 
-#url = "https://api-v3.mbta.com/routes?filter[type]=0,1&fields=long_name"
-
 qs = "?filter[type]=0,1&fields[route]=long_name&include=stop"
 url = "https://api-v3.mbta.com/routes" + qs
 r = requests.get(url)
 
-# pprint('r = ')
-# pprint(r.json())
-
 route_ids = []
 for e in r.json()["data"]:
-  # print("e['id'] = " + e["id"])
   route_ids.append(e["id"])
 
-
+routes_stops_dict = {}
 for route_id in route_ids:
-  url = "https://api-v3.mbta.com/stops?page[limit]=10&filter[route]=" + route_id
+  url = "https://api-v3.mbta.com/stops?filter[route]=" + route_id
   r = requests.get(url)
-  print(r.json())
+  num_stops = len(r.json()["data"])
+  routes_stops_dict[route_id] = num_stops
+
+# Display min and max of stop count across routes
+max_stops = max(routes_stops_dict.values())
+min_stops = min(routes_stops_dict.values())
+for route, stops in routes_stops_dict.items():
+  if stops == max_stops:
+    print("Route %s has the most stops with %d stops." % (route, stops))
+  if stops == min_stops:
+    print("Route %s has the fewest stops with %d stops." % (route, stops))
+
 
 exit()
 
 x = json.loads(r.json(), object_hook=lambda d: SimpleNamespace(**d))
 pprint(x)
 
-# print(r.json())
 exit()
-
-# filter[route]=0,1
 
 ##########################################################################################
 
-#url = "https://api-v3.mbta.com/stops"
-#url = "https://api-v3.mbta.com/routes"
 url = "https://api-v3.mbta.com/stops?page[limit]=10&filter[route_type]=0,1"
 r = requests.get(url)
 print(r.json())
