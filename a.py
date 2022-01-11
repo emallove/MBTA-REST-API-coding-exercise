@@ -92,6 +92,7 @@ def get_all_route_ids():
   r = requests.get(url)
   for e in r.json()["data"]:
     all_route_ids[e["id"]] = e["attributes"]["long_name"]
+
   return all_route_ids
 
 def get_all_stop_ids():
@@ -102,8 +103,18 @@ def get_all_stop_ids():
 
   r = requests.get(url)
   j = r.json()
+
   for e in j["data"]:
-    all_stop_ids[e["id"]] = e["attributes"]["name"]
+
+    # Unforunately, multiple IDs key to the same stop, e.g.,
+    #  '70273': 'Capen Street',
+    #  '70274': 'Capen Street',
+    #  '70275': 'Mattapan',
+    #  '70276': 'Mattapan',
+    #  ...
+    if e["attributes"]["name"] not in all_stop_ids.values():
+      all_stop_ids[e["id"]] = e["attributes"]["name"]
+
   return all_stop_ids
 
 get_all_route_ids()
@@ -119,10 +130,8 @@ for route_id in all_route_ids.keys():
   url = (f"{base_url}/trips?"
          f"&{api_key}"
          f"&include=route,stops"
-         f"&page[limit]=500"
          f"&filter[route]={route_id}"
-         f"&fields[trip]=name"
-         f"&page[limit]=100")
+         f"&fields[trip]=name")
 
   r = requests.get(url)
   j = r.json()
