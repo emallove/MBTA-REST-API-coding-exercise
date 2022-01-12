@@ -81,8 +81,6 @@ for route, stops in routes_stops_dict.items():
 
 # Build lookup tables of routes and stops by id => name
 all_route_ids = {}
-all_stop_ids = {}
-
 def get_all_route_ids():
   url = (f"{base_url}/routes?"
          f"&{api_key}"
@@ -95,10 +93,13 @@ def get_all_route_ids():
 
   return all_route_ids
 
+all_stop_ids = {}
+all_parent_station_ids = {}
+
 def get_all_stop_ids():
   url = (f"{base_url}/stops?"
          f"&{api_key}"
-         f"&fields[stops]=short_name"
+         f"&fields[stops]=short_name,parent_station"
          f"&filter[route_type]=0,1")
 
   r = requests.get(url)
@@ -115,7 +116,17 @@ def get_all_stop_ids():
     if e["attributes"]["name"] not in all_stop_ids.values():
       all_stop_ids[e["id"]] = e["attributes"]["name"]
 
+    p_station_id = e["relationships"]["parent_station"]["data"]["id"]
+
+    if p_station_id not in all_parent_station_ids:
+      all_parent_station_ids[p_station_id] =  e["attributes"]["name"]
+
   return all_stop_ids
+
+def get_stop_name(identifier):
+  url = (f"{base_url}/stops/"
+         f"{identifier}/"
+         f"&fields[stops]=short_name")
 
 get_all_route_ids()
 get_all_stop_ids()
@@ -127,43 +138,52 @@ stops_routes_dict = {}
 
 # Now gather all the trips (with route and stops included) by route id
 for route_id in all_route_ids.keys():
-  url = (f"{base_url}/trips?"
+  url = (f"{base_url}/stops?"
          f"&{api_key}"
-         f"&include=route,stops"
          f"&filter[route]={route_id}"
          f"&fields[trip]=name")
 
   r = requests.get(url)
   j = r.json()
 
-  for trip in j["data"]:
-    for stop in trip["relationships"]["stops"]["data"]:
+  for stop in j["data"]:
 
-      # Only proceed if the stop is on a route_type=0,1
-      if stop["id"] not in all_stop_ids:
-        continue
+    stop_id = stop["id"]
 
-      # Build dict's of { route => stops } and { stop => routes }
-      if route_id not in routes_stops_dict:
-        routes_stops_dict[route_id] = set()
+    # Build dict's of { route => stops } and { stop => routes }
+    if route_id not in routes_stops_dict:
+      routes_stops_dict[route_id] = set()
 
-      routes_stops_dict[route_id].add((stop["id"], all_stop_ids[stop["id"]]))
+    if stop["id"] in all_stop_ids:
+      stop_name = all_stop_ids[stop["id"]]
+    elif stop["id"] in all_parent_station_ids:
+      stop_name = all_parent_station_ids[stop["id"]]
+    else:
+      stop_name = "Stop not found"
 
-      if stop["id"] not in stops_routes_dict:
-        stops_routes_dict[stop["id"]] = set()
+    routes_stops_dict[route_id].add((stop_id, stop_name))
 
-      stops_routes_dict[stop["id"]].add((route_id, all_route_ids[route_id]))
+    if stop_id not in stops_routes_dict:
+      stops_routes_dict[stop_id] = set()
 
-# print("routes_stops_dict")
-# pprint(routes_stops_dict)
-# print("stops_routes_dict")
-# pprint(stops_routes_dict)
+    stops_routes_dict[stop_id].add((route_id, all_route_ids[route_id]))
 
+# FIXME: Only considers Green line (should also include Red, Orange, Blue),
+#       because stops such as "Park Street", which are on two routes (of
+#       different color), are only listed as being on Green Line routes.
 print("\nStops connecting two or more subway routes:\n")
 for stop_id,routes in stops_routes_dict.items():
   if len(stops_routes_dict[stop_id]) > 1:
+
+    if stop_id in all_stop_ids:
+      stop_name = all_stop_ids[stop_id]
+    elif stop_id in all_parent_station_ids:
+      stop_name = all_parent_station_ids[stop_id]
+    else:
+      stop_name = "Stop not found"
+
     print("\tStop: %s, Routes: %s" %
-          (all_stop_ids[stop_id],
+          (stop_name,
            [v[1] for v in stops_routes_dict[stop_id]]))
 
 exit()
@@ -189,4 +209,6 @@ exit()
 #
 # How you handle input, represent train routes, and present output is your choice.
 
+
+# In the list of trips, find destination
 
