@@ -59,6 +59,20 @@ class Route:
   
     return False
 
+def get_stop_by_name(name):
+  for stop_id, stop in all_stops.items():
+    if stop.name == name:
+      return stop
+
+  return None
+
+def get_routes_by_stop(stop_id):
+  for route_id, route in all_routes.items():
+    if route.has_stop(stop_id, stop_id):
+      return stop.routes
+
+  return None
+
 #
 # Boston's transportation system, the MBTA (https://mbta.com/), has a website with APIs
 # https://api-v3.mbta.com/docs/swagger/index.html.
@@ -97,7 +111,7 @@ def gather_all_route_ids():
 
   url = (f"{base_url}/routes?filter[type]=0,1"
          f"&fields[route]=long_name"
-         f"&include=stop")
+         f"&include=stop,line")
 
   r = requests.get(url)
   j = r.json()
@@ -137,6 +151,11 @@ def get_routes_with_max_and_min_stops():
 
   print("Route %s has the fewest stops with %d stops." % (min_stops_route, min_stops))
   print("Route %s has the most stops with %d stops." %   (max_stops_route, max_stops))
+
+#####################################################################
+print("\n\n" + ("#" * 70))
+print("Question 1: \n")
+#####################################################################
 
 get_routes_with_max_and_min_stops()
 
@@ -202,6 +221,8 @@ def get_stop_name(identifier):
 
 get_all_stops()
 
+connecting_stops = {}
+
 def find_connecting_stops():
   """
   Gather all stops, which fall on two routes
@@ -214,10 +235,15 @@ def find_connecting_stops():
   print("\nStops connecting two or more subway routes:\n")
   for stop_id, stop in all_stops.items():
     if len(stop.routes) > 1:
+      connecting_stops[stop_id] = stop
       print("\tStop: %s, Routes: %s" %
             (stop.name, ", ".join(stop.routes)))
 
-# UNCOMMENT
+#####################################################################
+print("\n\n" + ("#" * 70))
+print("Question 2: \n")
+#####################################################################
+
 find_connecting_stops()
 
 #####################################################################################################
@@ -245,25 +271,45 @@ find_connecting_stops()
 # In the list of stops, find intersections of routes.
 def get_route(stop_a_name, stop_b_name):
 
-  # Get id of stop-A
-  stop_a_id = [_id for _id, _name in all_parent_station_ids.items() if _name == stop_a_name]
-  stop_b_id = [_id for _id, _name in all_parent_station_ids.items() if _name == stop_b_name]
-
   # Get route of stop-A
-  print("route_a = ", all_route_ids[route_a[0]])
-  print("route_b = ", all_route_ids[route_b[0]])
+  stop_a = get_stop_by_name(stop_a_name)
+  stop_b = get_stop_by_name(stop_b_name)
+  stop_a_routes = set(stop_a.routes)
+  stop_b_routes = set(stop_b.routes)
+  hops = []
+  intersection = stop_a_routes.intersection(stop_b_routes)
 
-  route_a_id = [_route_id for _route_id, _station_tuple in all_parent_station_ids.items() if _station_tuple[0] == route_a_name]
-  route_b_id = [_route_id for _route_id, _station_tuple in all_parent_station_ids.items() if _station_tuple[0] == route_b_name]
+  if len(intersection):
+    hops.append(list(intersection)[0])
+  else:
+    hops.append(list(stop_a_routes)[0])
+    for cs in connecting_stops:
+      stop = all_stops[cs]
 
-  # Get route of stop-B
-  # Look up connecting_stop between the two
-  return
+      intersection_a = stop_a_routes.intersection(stop.routes)
+      intersection_b = stop_b_routes.intersection(stop.routes)
 
-# get_route("Davis", "Kendall/MIT")
-# get_route("Ashmont", "Arlington")
+      if len(intersection_a) and len(intersection_b):
+        hops.append(list(intersection_b)[0])
 
-# Expected: BlueLine, GreenLine, RedLine
+  print("To get from '%s' to '%s', take these routes: %s" % 
+        (stop_a_name, stop_b_name, hops))
+
+  return hops
+
+#####################################################################
+print("\n\n" + ("#" * 70))
+print("Question 3: \n")
+#####################################################################
+
+get_route("Davis", "Kendall/MIT")
+get_route("Ashmont", "Arlington")
+get_route("Aquarium", "Chinatown")
+get_route("Riverway", "Beachmont")
+get_route("Riverway", "Beachmont")
+get_route("Wellington", "Braintree")
+
+# TODO: Expected: BlueLine, GreenLine, RedLine
 # get_route("Airport", "Harvard")
 
 
