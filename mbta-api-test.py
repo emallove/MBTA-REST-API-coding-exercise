@@ -4,7 +4,7 @@ import requests
 import json
 from pprint import pprint
 
-api_key = "api_key=d2e03097f9c24dcfa494d95f9f3c3b81"
+api_key = "api_key=ENTER_YOUR_API_KEY"
 base_url = "https://api-v3.mbta.com"
 route_types_filter = "0,1"
 
